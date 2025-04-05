@@ -43,7 +43,7 @@ conv_base = keras.applications.vgg16.VGG16(
     input_shape=(WEIGHT, HEIGHT, 3)
     )
 
-conv_base.summary()             # просмотр инфы по сверточной основе
+conv_base.summary()                     # просмотр инфы по сверточной основе
 
 
 # Сверточная сеть с нуля. Аугментация.
@@ -55,13 +55,13 @@ def cnn_from_scratch(train_dataset, validation_dataset, test_dataset):
         layers.RandomZoom(0.2),
     ])
 
-    # Сверточная модель. На вход изображения размером 224*224 с 3 каналами цвета.
+    # Сверточная модель. На вход изображения размером 224*224 с 3 цветами.
     inputs = keras.Input(shape=(WEIGHT, HEIGHT, 3))
     # Аугментация.
     x = data_augmentation(inputs)
     # Нормализация.
-    x = layers.Rescaling(1./255)(x)  # Нормализация данных в диапазон [0, 1]
-    # 5 блоков свертки и пулинга. Количество фильтров увеличивается: от 32 до 256.
+    x = layers.Rescaling(1./255)(x)  # нормализация данных в диапазон [0, 1]
+    # 5 блоков свертки и пулинга. Количество фильтров увеличивается: 32 -> 256
     x = layers.Conv2D(filters=32, kernel_size=3, activation="relu")(x)
     x = layers.MaxPooling2D(pool_size=2)(x)
     x = layers.Conv2D(filters=64, kernel_size=3, activation="relu")(x)
@@ -71,7 +71,7 @@ def cnn_from_scratch(train_dataset, validation_dataset, test_dataset):
     x = layers.Conv2D(filters=256, kernel_size=3, activation="relu")(x)
     x = layers.MaxPooling2D(pool_size=2)(x)
     x = layers.Conv2D(filters=256, kernel_size=3, activation="relu")(x)
-    # Преобразуем тензор (7, 7, 256) в плоский вектор (12544). 7 * 7 * 256 = 12544.
+    # Преобразуем тензор (7, 7, 256) в плоский вектор (12544). 7*7*256 = 12544.
     x = layers.Flatten()(x)
     x = layers.Dropout(0.5)(x)
     # Выходной слой с вероятностью 0 (мужчина) или 1 (женщина).
@@ -80,8 +80,8 @@ def cnn_from_scratch(train_dataset, validation_dataset, test_dataset):
     model = keras.Model(inputs=inputs, outputs=outputs)
 
     model.compile(loss="binary_crossentropy",
-                optimizer="rmsprop",
-                metrics=["accuracy"])
+                  optimizer="rmsprop",
+                  metrics=["accuracy"])
 
     callbacks = [
         # Сохраняем модель, если есть улучшение параметров.
@@ -89,7 +89,7 @@ def cnn_from_scratch(train_dataset, validation_dataset, test_dataset):
             filepath="models/cnn_from_scratch.keras",
             save_best_only=True,
             monitor="val_loss"),
-        # Прерываем обучение после 7 эпох без улучшений
+        # Прерываем обучение после 7 эпох без улучшений.
         keras.callbacks.EarlyStopping(
             monitor="val_loss",
             patience=7,
@@ -102,7 +102,7 @@ def cnn_from_scratch(train_dataset, validation_dataset, test_dataset):
         validation_data=validation_dataset,
         callbacks=callbacks)
 
-    plot_results(history)
+    plot_results(history)       # для настройки, отключить EarlyStopping
 
     # Тестирование модели.
     # Загружаем сохраненную модель (лучший результат, ДО переобучения).
@@ -116,33 +116,47 @@ def cnn_from_scratch(train_dataset, validation_dataset, test_dataset):
 
 # Печатаем графики
 def plot_results(history):
-    acc = history.history["accuracy"]
-    val_acc = history.history["val_accuracy"]
-    loss = history.history["loss"]
-    val_loss = history.history["val_loss"]
-    epochs = range(1, len(acc) + 1)
-    plt.plot(epochs, acc, "bo", label="Точность на этапе обучения")
-    plt.plot(epochs, val_acc, "b", label="Точность на этапе проверки")
-    plt.title("Точность на этапах обучения и проверки")
-    plt.legend()
-    plt.figure()
-    plt.plot(epochs, loss, "bo", label="Потери на этапе обучения")
-    plt.plot(epochs, val_loss, "b", label="Потери на этапе проверки")
+    history_dict = history.history
+    epochs = range(1, len(history_dict["loss"]) + 1)
+
+    plt.figure(figsize=(12, 5))  # Устанавливаем размер окна
+
+    # График потерь
+    plt.subplot(1, 2, 1)  # Первое подокно
+    plt.plot(epochs, history_dict["loss"], "bo", label="Потери на обучении")
+    plt.plot(epochs, history_dict["val_loss"], "b", label="Потери на проверке")
     plt.title("Потери на этапах обучения и проверки")
+    plt.xlabel("Эпохи")
+    plt.ylabel("Потери")
     plt.legend()
+
+    # График точности
+    plt.subplot(1, 2, 2)  # Второе подокно
+    plt.plot(epochs, history_dict["accuracy"], "bo",
+             label="Точность на обучении")
+    plt.plot(epochs, history_dict["val_accuracy"], "b",
+             label="Точность на проверке")
+    plt.title("Точность на этапах обучения и проверки")
+    plt.xlabel("Эпохи")
+    plt.ylabel("Точность")
+    plt.legend()
+
+    plt.tight_layout()  # Улучшаем расположение графиков
     plt.show()
 
 
 # Быстрое выделение признаков без обогащения данных. Быстро и дешево.
 def vgg16_features(conv_base, train_dataset, validation_dataset, test_dataset):
 
+    # Получение признаков и меток из фото.
     def get_features_and_labels(dataset):
         all_features = []       # список для хранения признаков изображений
         all_labels = []         # список для хранения соответствующих меток
         for images, labels in dataset:
             # Подготавливает изображения для VGG16.
-            preprocessed_images = keras.applications.vgg16.preprocess_input(images)
-            # conv_base - предобученная модель, извлекает признаки из изображений.
+            preprocessed_images = (
+                keras.applications.vgg16.preprocess_input(images))
+            # conv_base - извлекает признаки из изображений.
             # Пропускает предобработанные изображения через модель и возвращает
             # признаки (тензор размером (batch_size, height, width, channels).
             # Признаки - высокоуровневые представления изображений,
@@ -152,6 +166,7 @@ def vgg16_features(conv_base, train_dataset, validation_dataset, test_dataset):
             all_labels.append(labels)
         return np.concatenate(all_features), np.concatenate(all_labels)
 
+    # Все датасеты преобразовываем в признаки и метки.
     train_features, train_labels = (
         get_features_and_labels(train_dataset))
     val_features, val_labels = (
@@ -164,7 +179,7 @@ def vgg16_features(conv_base, train_dataset, validation_dataset, test_dataset):
     inputs = keras.Input(shape=(7, 7, 512))
     # "Расплющиваем" входной тензор в вектор.
     x = layers.Flatten()(inputs)
-    # Уменьшает размерность данных и извлекает более абстрактные признаки.
+    # Уменьшаем размерность данных и извлекает более абстрактные признаки.
     x = layers.Dense(256)(x)
     x = layers.Dropout(0.5)(x)
     # Слой для бинарной классификации.
@@ -201,13 +216,14 @@ def vgg16_features(conv_base, train_dataset, validation_dataset, test_dataset):
 
 
 # Выделение признаков с обогащением данных.
-def vgg16_features_augmentation(conv_base, train_dataset, validation_dataset, test_dataset):
+def vgg16_features_augmentation(
+        conv_base, train_dataset, validation_dataset, test_dataset):
 
-    # При передаче trainable=False список обучаемых весов слоя/модели очищается.
+    # При передаче trainable=False веса слоев замораживаются (не обучаются).
     conv_base.trainable = False
 
-    # Теперь создадим новую модель, объединяющую обогащение данных, замороженную
-    # сверточную основу, полносвязанный классификатор.
+    # Теперь создадим новую модель, объединяющую обогащение данных,
+    # замороженную сверточную основу, полносвязанный классификатор.
 
     data_augmentation = keras.Sequential(
         [
@@ -218,8 +234,8 @@ def vgg16_features_augmentation(conv_base, train_dataset, validation_dataset, te
     )
 
     inputs = keras.Input(shape=(WEIGHT, HEIGHT, 3))
-    x = data_augmentation(inputs)                       # обогащение данных
-    x = keras.applications.vgg16.preprocess_input(x)    # масштабирование входных
+    x = data_augmentation(inputs)                     # обогащение данных
+    x = keras.applications.vgg16.preprocess_input(x)  # масштабирование входных
     x = conv_base(x)
     x = layers.Flatten()(x)
     x = layers.Dense(256)(x)
@@ -251,7 +267,7 @@ def vgg16_features_augmentation(conv_base, train_dataset, validation_dataset, te
 
     best_model = keras.models.load_model(
         "models/vgg16_features_augmentation.keras")
-    
+
     test_acc = best_model.evaluate(test_dataset)[1]
     print(f"Test accuracy: {test_acc:.3f}")
 
@@ -270,7 +286,8 @@ def fine_tuning(conv_base, train_dataset, validation_dataset, test_dataset):
     # Первые 3 этапа мы уже сделали в vgg16_features_augmentation.
 
     # Получаем предварительную модель
-    model = vgg16_features_augmentation(conv_base, train_dataset, validation_dataset, test_dataset)
+    model = vgg16_features_augmentation(
+        conv_base, train_dataset, validation_dataset, test_dataset)
 
     # Рамораживаем все слои, кроме последних 4.
     conv_base.trainable = True
@@ -298,7 +315,7 @@ def fine_tuning(conv_base, train_dataset, validation_dataset, test_dataset):
         validation_data=validation_dataset,
         callbacks=callbacks)
 
-    # Визуализация результатов второго этапа
+    # Визуализация результатов обучения.
     plot_results(history)
 
     # Загружаем лучшую модель и оцениваем на тестовом наборе
@@ -325,7 +342,11 @@ if __name__ == '__main__':
         create_tensors(path_to_big))
 
     # Создаем 4 модели.
-    cnn_from_scratch(train_small_dataset, validation_small_dataset, test_small_dataset)
-    vgg16_features(conv_base, train_small_dataset, validation_small_dataset, test_small_dataset)
-    vgg16_features_augmentation(conv_base, train_small_dataset, validation_small_dataset, test_small_dataset)
-    fine_tuning(conv_base, train_small_dataset, validation_small_dataset, test_small_dataset)
+    cnn_from_scratch(
+        train_small_dataset, validation_small_dataset, test_small_dataset)
+    # vgg16_features(conv_base, train_small_dataset,
+    #                validation_small_dataset, test_small_dataset)
+    # vgg16_features_augmentation(conv_base, train_small_dataset,
+    #                             validation_small_dataset, test_small_dataset)
+    # fine_tuning(conv_base, train_small_dataset,
+    #             validation_small_dataset, test_small_dataset)
