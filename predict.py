@@ -6,7 +6,7 @@ from keras.preprocessing import image
 # из обучающей модели.
 WEIGHT, HEIGHT = 224, 224
 
-MODELS = {"cnn_from_scratch": 73,
+MODELS = {"cnn_from_scratch": 77,
           "vgg16_features": 82,
           "vgg16_features_augmentation": 84,
           "fine_tuning": 86,

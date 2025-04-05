@@ -111,7 +111,7 @@ def cnn_from_scratch(train_dataset, validation_dataset, test_dataset):
     print(f"Test accuracy: {test_acc:.3f}")
 
     return best_model
-# 73% точность.
+# 77% точность.
 
 
 # Печатаем графики
