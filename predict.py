@@ -54,13 +54,3 @@ def predict_gender(func_name, img_path):
     prediction = model.predict(prepared_img)
 
     return prediction[0][0]
-
-
-if __name__ == "__main__":
-    for model in MODELS.keys():
-        for i in range(1, 11):
-            prediction = predict_gender(f"{model}", f"photos/{i}.jpg")
-            print('баба' if prediction > 0.5 else 'мужик')
-
-        print(f"Это была модель {model}")
-        print()

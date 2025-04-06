@@ -20,41 +20,43 @@ reply_markup = InlineKeyboardMarkup(keyboard)
 # Обработчик команды /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Привет! Я бот для отпределения пола человека по фотографии. "
+        "Привет! Я бот для определения пола человека по фотографии. "
         "Отправь мне фото, выбери модель и получи предсказание пола;)"
     )
 
 
 # Обработчик получения фото.
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        if update.message.photo:
+            # Получаем фотку с макс.качеством.
+            photo = update.message.photo[-1]
+            file = await photo.get_file()
 
-    if update.message.photo:
-        # Получаем фотку с макс.качеством.
-        photo = update.message.photo[-1]
-        file = await photo.get_file()
+        elif update.message.document:
+            # Проверяем, является ли документ изображением (фото без сжатия).
+            if update.message.document.mime_type.startswith('image/'):
+                file = await update.message.document.get_file()
 
-    elif update.message.document:
-        # Проверяем, является ли документ изображением (фото без сжатия).
-        if update.message.document.mime_type.startswith('image/'):
-            file = await update.message.document.get_file()
+        # Генерируем уникальное имя файла, предполагая, что это jpg.
+        file_path = f"{IMAGE_PATH}/{file.file_id}.jpg"
 
-    # Генерируем уникальное имя файла.
-    file_path = f"{IMAGE_PATH}/{file.file_id}.jpg"
+        # Создаем директорию, если ее нет.
+        os.makedirs(IMAGE_PATH, exist_ok=True)
 
-    # Создаем директорию, если ее нет.
-    os.makedirs(IMAGE_PATH, exist_ok=True)
+        # Скачиваем фото.
+        await file.download_to_drive(file_path)
 
-    # Скачиваем фото.
-    await file.download_to_drive(file_path)
+        # Сохраняем путь к файлу в контексте пользователя.
+        context.user_data['photo_path'] = file_path
 
-    # Сохраняем путь к файлу в контексте пользователя.
-    context.user_data['photo_path'] = file_path
-
-    # Отправляем сообщение с кнопками
-    await update.message.reply_text(
-        text='Фото загружено. Выберите модель для предсказания.',
-        reply_markup=reply_markup,
-        )
+        # Отправляем сообщение с кнопками
+        await update.message.reply_text(
+            text='Фото загружено. Выберите модель для предсказания.',
+            reply_markup=reply_markup,
+            )
+    except Exception as e:
+        await update.message.reply_text(f"Ошибка при загрузке фото: {e}")
 
 
 # Обработчик нажатия на кнопку.
@@ -68,6 +70,8 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     photo_path = context.user_data.get('photo_path')
 
     if photo_path and os.path.exists(photo_path):
+        # Успокаиваем пользователя на случай долгой обработки.
+        await query.edit_message_text("Обработка фото, подождите...")
         # Вызываем функцию предсказания.
         prediction = predict_gender(func_name=method, img_path=photo_path)
         # Обработка предсказания.
