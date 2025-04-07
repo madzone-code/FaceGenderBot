@@ -55,6 +55,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text='Фото загружено. Выберите модель для предсказания.',
             reply_markup=reply_markup,
             )
+        TELEGRAM_CHAT_ID
     except Exception as e:
         await update.message.reply_text(f"Ошибка при загрузке фото: {e}")
 
