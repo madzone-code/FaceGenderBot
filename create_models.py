@@ -98,7 +98,7 @@ def cnn_from_scratch(train_dataset, validation_dataset, test_dataset):
 
     history = model.fit(
         train_dataset,
-        epochs=50,              # с запасом, EarlyStopping отработает
+        epochs=100,              # с запасом, EarlyStopping отработает
         validation_data=validation_dataset,
         callbacks=callbacks)
 
@@ -120,7 +120,6 @@ def plot_results(history):
     epochs = range(1, len(history_dict["loss"]) + 1)
 
     plt.figure(figsize=(12, 5))  # Устанавливаем размер окна
-
     # График потерь
     plt.subplot(1, 2, 1)  # Первое подокно
     plt.plot(epochs, history_dict["loss"], "bo", label="Потери на обучении")
@@ -129,7 +128,6 @@ def plot_results(history):
     plt.xlabel("Эпохи")
     plt.ylabel("Потери")
     plt.legend()
-
     # График точности
     plt.subplot(1, 2, 2)  # Второе подокно
     plt.plot(epochs, history_dict["accuracy"], "bo",
@@ -174,7 +172,9 @@ def vgg16_features(conv_base, train_dataset, validation_dataset, test_dataset):
     test_features, test_labels = (
         get_features_and_labels(test_dataset))
 
-    # Определение и обучение полносвязного классификатора.
+    # Определение и обучение полносвязного классификатора, используя vgg16.
+    # То есть мы получаем представления изображений, а потом передаем из на вход
+    # новой моделе.
     # Создаем входной тензор 5,5,512 (если 180*180) (без учета размера пакета).
     inputs = keras.Input(shape=(7, 7, 512))
     # "Расплющиваем" входной тензор в вектор.
@@ -238,9 +238,11 @@ def vgg16_features_augmentation(
     x = keras.applications.vgg16.preprocess_input(x)  # масштабирование входных
     x = conv_base(x)
     x = layers.Flatten()(x)
+    # Обучаются веса только 2 слоев Dense. 
     x = layers.Dense(256)(x)
     x = layers.Dropout(0.5)(x)
     outputs = layers.Dense(1, activation="sigmoid")(x)
+
     model = keras.Model(inputs, outputs)
     model.compile(loss="binary_crossentropy",
                   optimizer="rmsprop",
@@ -344,9 +346,9 @@ if __name__ == '__main__':
     # Создаем 4 модели.
     cnn_from_scratch(
         train_small_dataset, validation_small_dataset, test_small_dataset)
-    # vgg16_features(conv_base, train_small_dataset,
-    #                validation_small_dataset, test_small_dataset)
-    # vgg16_features_augmentation(conv_base, train_small_dataset,
-    #                             validation_small_dataset, test_small_dataset)
-    # fine_tuning(conv_base, train_small_dataset,
-    #             validation_small_dataset, test_small_dataset)
+    vgg16_features(conv_base, train_small_dataset,
+                   validation_small_dataset, test_small_dataset)
+    vgg16_features_augmentation(conv_base, train_small_dataset,
+                                validation_small_dataset, test_small_dataset)
+    fine_tuning(conv_base, train_small_dataset,
+                validation_small_dataset, test_small_dataset)
