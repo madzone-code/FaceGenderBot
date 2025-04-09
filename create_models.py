@@ -173,8 +173,8 @@ def vgg16_features(conv_base, train_dataset, validation_dataset, test_dataset):
         get_features_and_labels(test_dataset))
 
     # Определение и обучение полносвязного классификатора, используя vgg16.
-    # То есть мы получаем представления изображений, а потом передаем из на вход
-    # новой моделе.
+    # То есть мы получаем представления изображений,
+    # а потом передаем их на вход новой моделе.
     # Создаем входной тензор 5,5,512 (если 180*180) (без учета размера пакета).
     inputs = keras.Input(shape=(7, 7, 512))
     # "Расплющиваем" входной тензор в вектор.
@@ -238,7 +238,7 @@ def vgg16_features_augmentation(
     x = keras.applications.vgg16.preprocess_input(x)  # масштабирование входных
     x = conv_base(x)
     x = layers.Flatten()(x)
-    # Обучаются веса только 2 слоев Dense. 
+    # Обучаются веса только 2 слоев Dense.
     x = layers.Dense(256)(x)
     x = layers.Dropout(0.5)(x)
     outputs = layers.Dense(1, activation="sigmoid")(x)
